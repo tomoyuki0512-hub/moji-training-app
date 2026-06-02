@@ -1,5 +1,5 @@
-name: tashizan
-description: 4さい から はじめる かわいい たしざん アプリ
+name: moji_tracing
+description: 4さい向け もじ なぞりがき れんしゅう アプリ
 publish_to: none
 version: 1.0.0+1
 
@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.6
+  path_drawing: ^1.0.1
+  shared_preferences: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +20,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/strokes/hiragana.json
+    - assets/strokes/katakana.json
+    - assets/strokes/alphabet_upper.json
+    - assets/strokes/alphabet_lower.json

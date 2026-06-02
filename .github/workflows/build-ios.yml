@@ -75,20 +75,20 @@ jobs:
           mkdir -p "$OUTDIR/Payload"
           cp -R "$APP_PATH" "$OUTDIR/Payload/"
           cd "$OUTDIR"
-          zip -qq -r -9 tashizan-unsigned.ipa Payload
-          ls -la tashizan-unsigned.ipa
+          zip -qq -r -9 moji-tracing-unsigned.ipa Payload
+          ls -la moji-tracing-unsigned.ipa
           echo "IPA_DIR=$OUTDIR" >> $GITHUB_ENV
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tashizan-unsigned-ipa
-          path: ${{ env.IPA_DIR }}/tashizan-unsigned.ipa
+          name: moji-tracing-unsigned-ipa
+          path: ${{ env.IPA_DIR }}/moji-tracing-unsigned.ipa
           retention-days: 30
 
       - name: Upload .app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tashizan-Runner-app
+          name: moji-tracing-Runner-app
           path: build/ios/**/Runner.app
           retention-days: 7

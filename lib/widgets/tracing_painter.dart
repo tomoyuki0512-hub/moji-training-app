@@ -1,0 +1,194 @@
+import 'package:flutter/material.dart';
+
+import '../models/parsed_glyph.dart';
+import '../theme.dart';
+
+/// なぞり練習キャンバスの描画。下から順に
+/// 1) うすいガイド枠の十字線
+/// 2) お手本（端末フォントの文字, トグル可）
+/// 3) 書き順アニメ（番号・部分表示・動く点, トグル可）
+/// 4) 子どもがなぞった線
+/// を描く。
+class TracingPainter extends CustomPainter {
+  TracingPainter({
+    required this.glyph,
+    required this.guideText,
+    required this.showGuide,
+    required this.showOrder,
+    required this.progress,
+    required this.inkStrokes,
+    required this.penColor,
+    required this.penWidth,
+  }) : super(repaint: progress);
+
+  final ParsedGlyph glyph;
+  final String guideText;
+  final bool showGuide;
+  final bool showOrder;
+
+  /// 書き順アニメの進み具合（全画の長さに対する 0..1）。
+  final Animation<double> progress;
+
+  final List<List<Offset>> inkStrokes;
+  final Color penColor;
+  final double penWidth;
+
+  static const double _padFactor = 0.10;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final side = size.shortestSide;
+    final origin = side * _padFactor;
+    final content = side * (1 - 2 * _padFactor);
+    final scale = content / glyph.viewBox;
+
+    _paintGrid(canvas, side);
+    if (showGuide) _paintGuideText(canvas, side, origin, content);
+    if (showOrder) _paintStrokeOrder(canvas, origin, scale);
+    _paintInk(canvas);
+  }
+
+  void _paintGrid(Canvas canvas, double side) {
+    final paint = Paint()
+      ..color = AppColors.text.withValues(alpha: 0.10)
+      ..strokeWidth = 1.5;
+    final mid = side / 2;
+    _dashedLine(canvas, Offset(mid, side * 0.06), Offset(mid, side * 0.94), paint);
+    _dashedLine(canvas, Offset(side * 0.06, mid), Offset(side * 0.94, mid), paint);
+  }
+
+  void _dashedLine(Canvas canvas, Offset a, Offset b, Paint paint) {
+    const dash = 7.0;
+    const gap = 6.0;
+    final total = (b - a).distance;
+    final dir = (b - a) / total;
+    var t = 0.0;
+    while (t < total) {
+      final start = a + dir * t;
+      final end = a + dir * (t + dash).clamp(0.0, total).toDouble();
+      canvas.drawLine(start, end, paint);
+      t += dash + gap;
+    }
+  }
+
+  void _paintGuideText(Canvas canvas, double side, double origin, double content) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: guideText,
+        style: TextStyle(
+          color: AppColors.text.withValues(alpha: 0.16),
+          fontSize: content,
+          fontWeight: FontWeight.w600,
+          height: 1.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    tp.layout();
+    final sf = (content / tp.width).clamp(0.0, content / tp.height).toDouble();
+    final w = tp.width * sf;
+    final h = tp.height * sf;
+    final dx = (side - w) / 2;
+    final dy = (side - h) / 2;
+    canvas.save();
+    canvas.translate(dx, dy);
+    canvas.scale(sf);
+    tp.paint(canvas, Offset.zero);
+    canvas.restore();
+  }
+
+  void _paintStrokeOrder(Canvas canvas, double origin, double scale) {
+    canvas.save();
+    canvas.translate(origin, origin);
+    canvas.scale(scale);
+
+    final donePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 5
+      ..color = AppColors.blue.withValues(alpha: 0.55);
+    final activePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 6
+      ..color = AppColors.blue;
+
+    final target = progress.value * glyph.totalLength;
+    var remaining = target;
+    int activeIndex = -1;
+    double activeLocal = 0;
+
+    for (var i = 0; i < glyph.strokes.length; i++) {
+      final s = glyph.strokes[i];
+      if (remaining >= s.length) {
+        canvas.drawPath(s.path, donePaint);
+        remaining -= s.length;
+      } else if (activeIndex == -1) {
+        activeIndex = i;
+        activeLocal = remaining.clamp(0.0, s.length).toDouble();
+        final partial = s.metric.extractPath(0, activeLocal);
+        canvas.drawPath(partial, activePaint);
+        remaining = 0;
+      }
+    }
+
+    // 動く点（今なぞっている画の先端）。
+    if (activeIndex != -1) {
+      final tan = glyph.strokes[activeIndex].metric.getTangentForOffset(activeLocal);
+      if (tan != null) {
+        canvas.drawCircle(tan.position, 5.5, Paint()..color = AppColors.orange);
+      }
+    }
+
+    // 画番号（すべての画に表示して順番を見せる）。
+    for (var i = 0; i < glyph.strokes.length; i++) {
+      _paintNumber(canvas, i + 1, glyph.strokes[i].start);
+    }
+    canvas.restore();
+  }
+
+  void _paintNumber(Canvas canvas, int n, Offset at) {
+    canvas.drawCircle(at, 7, Paint()..color = AppColors.pink);
+    final tp = TextPainter(
+      text: TextSpan(
+        text: '$n',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          height: 1.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout();
+    tp.paint(canvas, at - Offset(tp.width / 2, tp.height / 2));
+  }
+
+  void _paintInk(Canvas canvas) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = penWidth
+      ..color = penColor;
+    for (final stroke in inkStrokes) {
+      if (stroke.isEmpty) continue;
+      if (stroke.length == 1) {
+        canvas.drawCircle(stroke.first, penWidth / 2, Paint()..color = penColor);
+        continue;
+      }
+      final path = Path()..moveTo(stroke.first.dx, stroke.first.dy);
+      for (var i = 1; i < stroke.length; i++) {
+        path.lineTo(stroke[i].dx, stroke[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant TracingPainter old) => true;
+}

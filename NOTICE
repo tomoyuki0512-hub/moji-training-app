@@ -1,0 +1,24 @@
+なぞりがき (moji_tracing) — 第三者素材のクレジット
+=================================================
+
+■ KanjiVG
+このアプリのひらがな・カタカナ（だくてん・半だくてん・小書き・拗音を含む）の
+書き順データは、KanjiVG プロジェクトの SVG データを変換して作成しています。
+
+  KanjiVG
+  Copyright (C) 2009-2011 Ulrich Apel
+  https://kanjivg.tagaini.net/
+  ライセンス: Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0)
+  https://creativecommons.org/licenses/by-sa/3.0/
+
+KanjiVG は CC BY-SA 3.0 で提供されています。これに基づき:
+  - 帰属表示: 上記のとおり KanjiVG を明記しています。
+  - 継承(ShareAlike): KanjiVG から派生した書き順データ
+    (assets/strokes/hiragana.json, assets/strokes/katakana.json) は、
+    同じく CC BY-SA 3.0 のもとで提供します。
+
+変換に使用した KanjiVG の元 SVG は tool/kanjivg_src/ に同梱しており、
+ライセンス全文は tool/kanjivg_src/LICENSE にあります。
+
+■ アルファベット（alphabet_upper.json / alphabet_lower.json）
+アルファベットの書き順データは本プロジェクトのオリジナルです。
