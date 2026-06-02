@@ -67,7 +67,9 @@ class _PracticeScreenState extends State<PracticeScreen>
     _ink.clear();
     _completed = false;
     _orderCtrl.duration = Duration(
-      milliseconds: (_glyph.totalLength * 5).clamp(1200, 5000).round(),
+      // なぞるスピードは duration で決まる（長いほどゆっくり）。
+      // 以前の半分の速さにするため係数と上下限を 2 倍にしている。
+      milliseconds: (_glyph.totalLength * 10).clamp(2400, 10000).round(),
     );
     if (_showOrder) {
       _orderCtrl.forward(from: 0);
