@@ -60,11 +60,12 @@ class _CharacterListScreenState extends State<CharacterListScreen> {
       ),
       body: SafeArea(
         child: GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 110,
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
+          padding: const EdgeInsets.all(12),
+          // 1 行 5 文字。あいうえお / アイウエオ が一行に収まる。
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 5,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
           ),
           itemCount: widget.characters.length,
           itemBuilder: (context, i) {
