@@ -45,6 +45,10 @@ class _PracticeScreenState extends State<PracticeScreen>
   bool _completed = false;
   final List<List<Offset>> _ink = [];
 
+  /// お手本（書き順パス）上のサンプル点（viewBox 座標）。なぞりが覆った割合で
+  /// 完了を判定するために使う。
+  List<Offset> _guideSamples = const [];
+
   MojiCharacter get _char => widget.characters[_index];
   bool get _hasNext => _index < widget.characters.length - 1;
 
@@ -64,6 +68,7 @@ class _PracticeScreenState extends State<PracticeScreen>
 
   void _loadChar() {
     _glyph = ParsedGlyph.from(_char);
+    _guideSamples = _sampleGuide(_glyph);
     _ink.clear();
     _completed = false;
     _orderCtrl.duration = Duration(
@@ -88,31 +93,49 @@ class _PracticeScreenState extends State<PracticeScreen>
     setState(() => _ink.last.add(p));
   }
 
-  // 1 本ぶんの線の長さ（px）。
-  double _strokeLength(List<Offset> s) {
-    var len = 0.0;
-    for (var i = 1; i < s.length; i++) {
-      len += (s[i] - s[i - 1]).distance;
+  /// お手本パスに沿ってサンプル点を打つ（viewBox 座標, 約 3 単位間隔）。
+  List<Offset> _sampleGuide(ParsedGlyph glyph) {
+    const step = 3.0;
+    final pts = <Offset>[];
+    for (final s in glyph.strokes) {
+      final len = s.metric.length;
+      for (var d = 0.0; d <= len; d += step) {
+        final t = s.metric.getTangentForOffset(d);
+        if (t != null) pts.add(t.position);
+      }
     }
-    return len;
+    return pts;
   }
 
   void _onPanEnd(double canvasSide) {
-    if (_completed) return;
-    // お手本（書き順パス）の画面上の長さ。お手本は viewBox を
-    // side*(1-2*0.10) に収めて描いているので、その比率で換算する。
-    final guideLenPx =
-        _glyph.totalLength * (canvasSide * 0.80) / _glyph.viewBox;
-    if (guideLenPx <= 0) return;
-    // 短いタッチ（手のひら・置き指・点）は無視して、なぞった合計長を測る。
-    var inkLen = 0.0;
-    for (final s in _ink) {
-      final l = _strokeLength(s);
-      if (l > canvasSide * 0.03) inkLen += l;
+    if (_completed || _guideSamples.isEmpty || canvasSide <= 0) return;
+    // viewBox -> キャンバス座標への換算（お手本と同じ origin/scale）。
+    final scale = canvasSide * 0.80 / _glyph.viewBox;
+    final origin = canvasSide * 0.10;
+    final radius = canvasSide * 0.085; // 線からの許容ずれ
+    final r2 = radius * radius;
+
+    var covered = 0;
+    for (final g in _guideSamples) {
+      final gx = g.dx * scale + origin;
+      final gy = g.dy * scale + origin;
+      var hit = false;
+      for (final stroke in _ink) {
+        for (final p in stroke) {
+          final dx = p.dx - gx, dy = p.dy - gy;
+          if (dx * dx + dy * dy <= r2) {
+            hit = true;
+            break;
+          }
+        }
+        if (hit) break;
+      }
+      if (hit) covered++;
     }
-    // 線の本数ではなく「お手本の 6 割くらいなぞれたか」で判定する。
-    // これで iPad の細かいタッチで途中クリアにならない。
-    if (inkLen >= guideLenPx * 0.6) {
+
+    // 線の本数や長さではなく「お手本の上を実際にどれだけ覆えたか」で判定する。
+    // 一部しか書いていなければ覆えないので、途中で誤クリアにならない。
+    if (covered / _guideSamples.length >= 0.7) {
       _complete();
     }
   }
