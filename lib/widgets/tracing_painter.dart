@@ -133,21 +133,46 @@ class TracingPainter extends CustomPainter {
       }
     }
 
-    // 画番号（すべての画に表示して順番を見せる）。
-    for (var i = 0; i < glyph.strokes.length; i++) {
-      _paintNumber(canvas, i + 1, glyph.strokes[i].start);
-    }
+    // 画番号: いま書いている画を最前面に、終わった画はうすく描いて、
+    // 始点が重なっても今の番号が必ず見えるようにする。
+    _paintNumbers(canvas, activeIndex);
     canvas.restore();
   }
 
-  void _paintNumber(Canvas canvas, int n, Offset at) {
-    canvas.drawCircle(at, 7, Paint()..color = AppColors.pink);
+  /// 画番号をアニメの進行に合わせて描く。
+  /// - 終わった画: うすく（後ろ）
+  /// - これから書く画: 通常（近い番号が上）
+  /// - いま書いている画: オレンジで大きく最前面
+  void _paintNumbers(Canvas canvas, int activeIndex) {
+    final n = glyph.strokes.length;
+    if (activeIndex == -1) {
+      // すべて書き終わった状態: 全番号を表示（小さい番号が上）。
+      for (var i = n - 1; i >= 0; i--) {
+        _paintNumber(canvas, i + 1, glyph.strokes[i].start, AppColors.pink, 7);
+      }
+      return;
+    }
+    for (var i = 0; i < activeIndex; i++) {
+      _paintNumber(canvas, i + 1, glyph.strokes[i].start,
+          AppColors.pink.withValues(alpha: 0.30), 6);
+    }
+    for (var i = n - 1; i > activeIndex; i--) {
+      _paintNumber(canvas, i + 1, glyph.strokes[i].start, AppColors.pink, 7);
+    }
+    _paintNumber(canvas, activeIndex + 1, glyph.strokes[activeIndex].start,
+        AppColors.orange, 9);
+  }
+
+  void _paintNumber(Canvas canvas, int n, Offset at, Color color, double r) {
+    // 白いふち: 番号が重なっても上の番号が読めるようにする。
+    canvas.drawCircle(at, r + 1.6, Paint()..color = Colors.white);
+    canvas.drawCircle(at, r, Paint()..color = color);
     final tp = TextPainter(
       text: TextSpan(
         text: '$n',
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 9,
+          fontSize: r * 1.25,
           fontWeight: FontWeight.bold,
           height: 1.0,
         ),
