@@ -1,0 +1,94 @@
+name: Build iOS IPA (Unsigned)
+
+on:
+  push:
+    branches:
+      - main
+      - claude/**
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build Unsigned IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Pod install
+        working-directory: ios
+        run: pod install --repo-update
+
+      - name: Build iOS (xcodebuild, no codesign)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            SYMROOT="$(pwd)/build/ios" \
+            2>&1 | xcpretty --color --simple || \
+          xcodebuild build \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            SYMROOT="$(pwd)/build/ios"
+
+      - name: Locate built .app
+        run: |
+          find build/ios -name "Runner.app" -type d 2>/dev/null || true
+          ls -la build/ios/ 2>/dev/null || true
+
+      - name: Create unsigned IPA
+        run: |
+          APP_PATH=$(find build/ios -name "Runner.app" -type d | head -1)
+          echo "Using .app at: $APP_PATH"
+          OUTDIR=$(dirname "$APP_PATH")
+          mkdir -p "$OUTDIR/Payload"
+          cp -R "$APP_PATH" "$OUTDIR/Payload/"
+          cd "$OUTDIR"
+          zip -qq -r -9 tashizan-unsigned.ipa Payload
+          ls -la tashizan-unsigned.ipa
+          echo "IPA_DIR=$OUTDIR" >> $GITHUB_ENV
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tashizan-unsigned-ipa
+          path: ${{ env.IPA_DIR }}/tashizan-unsigned.ipa
+          retention-days: 30
+
+      - name: Upload .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tashizan-Runner-app
+          path: build/ios/**/Runner.app
+          retention-days: 7
