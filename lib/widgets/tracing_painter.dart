@@ -5,14 +5,14 @@ import '../theme.dart';
 
 /// なぞり練習キャンバスの描画。下から順に
 /// 1) うすいガイド枠の十字線
-/// 2) お手本（端末フォントの文字, トグル可）
-/// 3) 書き順アニメ（番号・部分表示・動く点, トグル可）
+/// 2) お手本（書き順と同じ画を薄い太線で表示, トグル可）
+/// 3) 書き順アニメ（番号・部分表示・動く点, トグル可）— お手本の上をなぞる
 /// 4) 子どもがなぞった線
-/// を描く。
+/// を描く。お手本と書き順アニメは同じ画パスを同じ座標変換で描くので、
+/// 書き順アニメは必ずお手本の上を正確になぞる。
 class TracingPainter extends CustomPainter {
   TracingPainter({
     required this.glyph,
-    required this.guideText,
     required this.showGuide,
     required this.showOrder,
     required this.progress,
@@ -22,7 +22,6 @@ class TracingPainter extends CustomPainter {
   }) : super(repaint: progress);
 
   final ParsedGlyph glyph;
-  final String guideText;
   final bool showGuide;
   final bool showOrder;
 
@@ -43,7 +42,7 @@ class TracingPainter extends CustomPainter {
     final scale = content / glyph.viewBox;
 
     _paintGrid(canvas, side);
-    if (showGuide) _paintGuideText(canvas, side, origin, content);
+    if (showGuide) _paintGuide(canvas, origin, scale);
     if (showOrder) _paintStrokeOrder(canvas, origin, scale);
     _paintInk(canvas);
   }
@@ -71,30 +70,21 @@ class TracingPainter extends CustomPainter {
     }
   }
 
-  void _paintGuideText(Canvas canvas, double side, double origin, double content) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: guideText,
-        style: TextStyle(
-          color: AppColors.text.withValues(alpha: 0.16),
-          fontSize: content,
-          fontWeight: FontWeight.w600,
-          height: 1.0,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    tp.layout();
-    final sf = (content / tp.width).clamp(0.0, content / tp.height).toDouble();
-    final w = tp.width * sf;
-    final h = tp.height * sf;
-    final dx = (side - w) / 2;
-    final dy = (side - h) / 2;
+  /// お手本: 書き順と同じ画パスを、薄い太線で全画ぶん描く。
+  /// 書き順アニメと同じ座標変換（origin/scale）を使うので完全に重なる。
+  void _paintGuide(Canvas canvas, double origin, double scale) {
     canvas.save();
-    canvas.translate(dx, dy);
-    canvas.scale(sf);
-    tp.paint(canvas, Offset.zero);
+    canvas.translate(origin, origin);
+    canvas.scale(scale);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 9
+      ..color = AppColors.text.withValues(alpha: 0.18);
+    for (final s in glyph.strokes) {
+      canvas.drawPath(s.path, paint);
+    }
     canvas.restore();
   }
 

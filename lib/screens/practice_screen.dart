@@ -184,7 +184,6 @@ class _PracticeScreenState extends State<PracticeScreen>
                     padding: const EdgeInsets.all(16),
                     child: TracingCanvas(
                       glyph: _glyph,
-                      guideText: _char.char,
                       showGuide: _showGuide,
                       showOrder: _showOrder,
                       animation: _orderCtrl,

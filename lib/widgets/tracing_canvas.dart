@@ -9,7 +9,6 @@ class TracingCanvas extends StatelessWidget {
   const TracingCanvas({
     super.key,
     required this.glyph,
-    required this.guideText,
     required this.showGuide,
     required this.showOrder,
     required this.animation,
@@ -22,7 +21,6 @@ class TracingCanvas extends StatelessWidget {
   });
 
   final ParsedGlyph glyph;
-  final String guideText;
   final bool showGuide;
   final bool showOrder;
   final Animation<double> animation;
@@ -65,7 +63,6 @@ class TracingCanvas extends StatelessWidget {
                       size: Size.square(side),
                       painter: TracingPainter(
                         glyph: glyph,
-                        guideText: guideText,
                         showGuide: showGuide,
                         showOrder: showOrder,
                         progress: animation,
