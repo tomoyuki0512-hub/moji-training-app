@@ -88,9 +88,31 @@ class _PracticeScreenState extends State<PracticeScreen>
     setState(() => _ink.last.add(p));
   }
 
-  void _onPanEnd() {
-    // やさしい判定: なぞった線の数が画数に届いたらクリア。
-    if (!_completed && _ink.length >= _glyph.character.strokeCount) {
+  // 1 本ぶんの線の長さ（px）。
+  double _strokeLength(List<Offset> s) {
+    var len = 0.0;
+    for (var i = 1; i < s.length; i++) {
+      len += (s[i] - s[i - 1]).distance;
+    }
+    return len;
+  }
+
+  void _onPanEnd(double canvasSide) {
+    if (_completed) return;
+    // お手本（書き順パス）の画面上の長さ。お手本は viewBox を
+    // side*(1-2*0.10) に収めて描いているので、その比率で換算する。
+    final guideLenPx =
+        _glyph.totalLength * (canvasSide * 0.80) / _glyph.viewBox;
+    if (guideLenPx <= 0) return;
+    // 短いタッチ（手のひら・置き指・点）は無視して、なぞった合計長を測る。
+    var inkLen = 0.0;
+    for (final s in _ink) {
+      final l = _strokeLength(s);
+      if (l > canvasSide * 0.03) inkLen += l;
+    }
+    // 線の本数ではなく「お手本の 6 割くらいなぞれたか」で判定する。
+    // これで iPad の細かいタッチで途中クリアにならない。
+    if (inkLen >= guideLenPx * 0.6) {
       _complete();
     }
   }

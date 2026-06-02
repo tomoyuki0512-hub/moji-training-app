@@ -29,7 +29,9 @@ class TracingCanvas extends StatelessWidget {
   final double penWidth;
   final ValueChanged<Offset> onPanStart;
   final ValueChanged<Offset> onPanUpdate;
-  final VoidCallback onPanEnd;
+
+  /// なぞり終わりを通知する。引数はキャンバスの一辺(px)で、完了判定に使う。
+  final ValueChanged<double> onPanEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +59,7 @@ class TracingCanvas extends StatelessWidget {
                 child: GestureDetector(
                   onPanStart: (d) => onPanStart(d.localPosition),
                   onPanUpdate: (d) => onPanUpdate(d.localPosition),
-                  onPanEnd: (_) => onPanEnd(),
+                  onPanEnd: (_) => onPanEnd(side),
                   child: RepaintBoundary(
                     child: CustomPaint(
                       size: Size.square(side),
